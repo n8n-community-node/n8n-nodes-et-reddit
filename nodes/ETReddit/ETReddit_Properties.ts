@@ -160,11 +160,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {
@@ -324,11 +324,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {
@@ -435,11 +435,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {
@@ -564,6 +564,10 @@ export const properties = {
 						name: 'Image Post',
 						value: 'image',
 					},
+					{
+						name: 'Upload Image/Video Post',
+						value: 'upload',
+					},
 				],
 				default: 'self',
 				description: 'The kind of the post to create',
@@ -633,6 +637,37 @@ export const properties = {
 					},
 				},
 			},
+			{
+				displayName: 'Video Binary Data',
+				name: 'video',
+				type: 'string',
+				required: true,
+				default: 'data',
+				description: 'Input Binary property to use for video upload',
+				displayOptions: {
+					show: {
+						resource: ['post'],
+						operation: ['create'],
+						kind: ['upload'],
+					},
+				},
+			},
+			{
+				displayName: 'Thumbnail Binary Data',
+				name: 'thumbnail',
+				type: 'string',
+				required: true,
+				default: 'thumbnail',
+				description: 'Input Binary property to use for thumbnail upload',
+				displayOptions: {
+					show: {
+						resource: ['post'],
+						operation: ['create'],
+						kind: ['upload'],
+					},
+				},
+			},
+
 		
 			// ----------------------------------
 			//           post: delete
@@ -722,11 +757,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {
@@ -851,11 +886,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {
@@ -910,7 +945,7 @@ export const properties = {
 					},
 				],
 			},
-		] as INodeProperties[];
+		] as INodeProperties[],
 	},
 
 	// ------------------------------------------------------------------
@@ -1005,11 +1040,11 @@ export const properties = {
 				displayName: 'Limit',
 				name: 'limit',
 				type: 'number',
-				default: 100,
+				default: 50,
 				description: 'Max number of results to return',
 				typeOptions: {
 					minValue: 1,
-					maxValue: 100,
+
 				},
 				displayOptions: {
 					show: {

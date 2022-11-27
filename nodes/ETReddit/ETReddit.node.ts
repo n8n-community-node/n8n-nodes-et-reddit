@@ -5,14 +5,14 @@ import { methods } from './ETReddit_Methods';
 export class ETReddit implements INodeType {
 	description: INodeTypeDescription = {
 		displayName: 'ETReddit',
-		name: 'et-reddit',
-		icon: 'file:ETReddit.svg',
+		name: 'ETReddit',
+		icon: 'file:etreddit.svg',
 		group: ['transform'],
 		version: 1,
 		subtitle: '={{$parameter["operation"] + ": " + $parameter["resource"]}}',
 		description: 'Consume the Reddit API',
 		defaults: {
-			name: 'Reddit',
+			name: 'ETReddit',
 		},
 		inputs: ['main'],
 		outputs: ['main'],

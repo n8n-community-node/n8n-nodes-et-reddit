@@ -1,6 +1,7 @@
 import { IBinaryKeyData, IDataObject, IExecuteFunctions, IHookFunctions, INodeExecutionData, JsonObject, NodeApiError, NodeExecutionWithMetadata, NodeOperationError, sleep } from "n8n-workflow";
 import { OptionsWithUri, OptionsWithUrl } from "request-promise-native";
 import { LoggerProxy as Logger } from "n8n-workflow";
+import { Parser } from 'xml2js';
 
 export const methods = {
 
@@ -68,7 +69,7 @@ export const methods = {
 			throw error;
 		}
 	},
-}
+};
 
 // ------------------------------------------------------------------
 async function createPost(this: IExecuteFunctions, items: INodeExecutionData[], i: number) {
@@ -78,23 +79,91 @@ async function createPost(this: IExecuteFunctions, items: INodeExecutionData[], 
 
 	// https://www.reddit.com/dev/api/#POST_api_submit
 
-	const qs: IDataObject = {
+	let qs: IDataObject = {
 		title: this.getNodeParameter('title', i),
 		sr: this.getNodeParameter('subreddit', i),
 		kind: this.getNodeParameter('kind', i),
 	};
 
-	qs.kind === 'self'
-		? (qs.text = this.getNodeParameter('text', i))
-		: (qs.url = this.getNodeParameter('url', i));
+	if (qs.kind === 'upload') {
+		const uploadData = await createPostUpload.call(this, items, i);
+		qs = { ...qs, ...uploadData };
+		Logger.debug(`[ETReddit] upload qs: ${JSON.stringify(qs)}`);
+	}
+	else {
+		qs.kind === 'self'
+			? (qs.text = this.getNodeParameter('text', i))
+			: (qs.url = this.getNodeParameter('url', i));
 
-	if (qs.url) {
-		qs.resubmit = this.getNodeParameter('resubmit', i);
+		if (qs.url) {
+			qs.resubmit = this.getNodeParameter('resubmit', i);
+		}
 	}
 
 	let responseData = await redditApiRequest.call(this, 'POST', 'api/submit', qs);
 	responseData = responseData.json.data;
 	return responseData;
+}
+
+async function createPostUpload(this: IExecuteFunctions, items: INodeExecutionData[], i: number) {
+	const videoKey = this.getNodeParameter('video', i) as string;
+	const thumbnailKey = this.getNodeParameter('thumbnail', i) as string;
+	const uploadData = {} as IDataObject;
+	uploadData.kind = items[i].binary![videoKey].mimeType.includes('video') ? 'video' : 'image';
+
+	// Request Thumbnail Upload URL
+	let qs: IDataObject = {
+		filepath: items[i].binary![thumbnailKey].fileName,
+		mimetype: items[i].binary![thumbnailKey].mimeType,
+	};
+	let responseData = await redditApiRequest.call(this, 'POST', 'api/media/asset.json', qs);
+	Logger.debug(`[ETReddit] Thumbnail Upload Request: ${JSON.stringify(responseData)}`);
+
+	// Upload Thumbnail
+	qs = {};
+	for (let j = 0; j < responseData['args']['fields'].length; j++) {
+		qs[responseData['args']['fields'][j]['name']] = responseData['args']['fields'][j]['value'];
+	}
+	qs.file = await getAttachmentData.call(this, items, i, thumbnailKey);
+
+	let requestOptions = {
+		method: 'POST',
+		formData: qs,
+		url: `https:${responseData['args']['action']}`,
+	};
+	Logger.debug(`[ETReddit] Thumbnail Upload Request Options: ${JSON.stringify(requestOptions)}`);
+	responseData = await this.helpers.request(requestOptions);
+	const parser = new Parser();
+	responseData = await parser.parseStringPromise(responseData);
+	Logger.debug(`[ETReddit] Thumbnail Upload: ${JSON.stringify(responseData)}`);
+	uploadData.video_poster_url = responseData['PostResponse']['Location'][0];
+
+	// Request Video Upload URL
+	qs = {
+		filepath: items[i].binary![videoKey].fileName,
+		mimetype: items[i].binary![videoKey].mimeType,
+	};
+	responseData = await redditApiRequest.call(this, 'POST', 'api/media/asset.json', qs);
+	Logger.debug(`[ETReddit] Video Upload Request: ${JSON.stringify(responseData)}`);
+
+	// Upload Video
+	qs = {};
+	for (let j = 0; j < responseData['args']['fields'].length; j++) {
+		qs[responseData['args']['fields'][j]['name']] = responseData['args']['fields'][j]['value'];
+	}
+	qs.file = await getAttachmentData.call(this, items, i, videoKey);
+	requestOptions = {
+		method: 'POST',
+		formData: qs,
+		url: `https:${responseData['args']['action']}`,
+	};
+	Logger.debug(`[ETReddit] Video Upload Request Options: ${JSON.stringify(requestOptions)}`);
+	responseData = await this.helpers.request(requestOptions);
+	responseData = await parser.parseStringPromise(responseData);
+	Logger.debug(`[ETReddit] Video Upload: ${JSON.stringify(responseData)}`);
+	uploadData.url = responseData['PostResponse']['Location'][0];
+
+	return uploadData;
 }
 
 // ------------------------------------------------------------------
@@ -537,4 +606,34 @@ function getExecutionData(this: IExecuteFunctions, responseData: any, i: number)
 		this.helpers.returnJsonArray(responseData),
 		{ itemData: { item: i } },
 	);
+}
+
+async function getAttachmentData(
+	this: IExecuteFunctions,
+	items: INodeExecutionData[],
+	i: number,
+	binaryPropertyName: string,
+	// tslint:disable-next-line:no-any
+): Promise<any> {
+	const binaryKeyData = items[i].binary as IBinaryKeyData;
+
+	if (binaryKeyData === undefined) {
+		throw new NodeOperationError(
+			this.getNode(),
+			'No binary data set. So file can not be written!',
+			{ itemIndex: i },
+		);
+	}
+
+	const binaryData = binaryKeyData[binaryPropertyName];
+	const buffer = await this.helpers.getBinaryDataBuffer(i, binaryPropertyName);
+	const attachmentData = {
+		value: buffer,
+		options: {
+			filename: binaryData.fileName,
+			contentType: binaryData.mimeType,
+			mimeType: binaryData.mimeType,
+		},
+	};
+	return attachmentData;
 }
